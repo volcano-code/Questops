@@ -1,0 +1,8 @@
+{
+  "name": "QuestOps.Tests.PlayMode",
+  "references": ["QuestOps.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "autoReferenced": false
+}
