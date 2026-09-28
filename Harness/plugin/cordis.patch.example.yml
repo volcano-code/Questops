@@ -1,0 +1,7 @@
+# Replace the paths with absolute paths on the machine running DeepSeek Harness.
+- insert:
+    - id: questops-project-tools
+      name: '/ABSOLUTE/PATH/TO/Questops/Harness/plugin/src/questops-plugin.ts'
+      config:
+        contractPath: '/ABSOLUTE/PATH/TO/Questops/Schemas/canonical-quest.json'
+        skillPath: '/ABSOLUTE/PATH/TO/Questops/Skills/quest-authoring/SKILL.md'
