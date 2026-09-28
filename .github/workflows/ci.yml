@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Canonical Python tests
+        run: python -m unittest discover -s Agent/tests -v
+      - name: Release gate schema
+        run: python tools/release_gate.py || test $? -eq 2
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - working-directory: Web
+        run: npm install
+      - working-directory: Web
+        run: npm test
+      - working-directory: Web
+        run: npm run build
+
+  unity-source-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Do not pretend Unity source inventory is execution
+        run: |
+          test -f Packages/com.questops.toolkit/Tests/PlayMode/CanonicalQuestPlayModeTests.cs
+          echo "Unity PlayMode source exists; execution remains NOT_RUN without a Unity runner."
