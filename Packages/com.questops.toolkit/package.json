@@ -1,0 +1,7 @@
+{
+  "name": "com.questops.toolkit",
+  "version": "0.1.0",
+  "displayName": "QuestOps Toolkit",
+  "unity": "6000.3",
+  "description": "Deterministic runtime and tests for verified quest authoring."
+}
