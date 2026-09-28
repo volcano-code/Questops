@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "project": "QuestOps",
+  "canonicalCase": "level5-blacksmith-iron3-gold100-exactly-once",
+  "gates": {
+    "backend": {
+      "status": "NOT_RUN",
+      "evidence": null
+    },
+    "web": {
+      "status": "NOT_RUN",
+      "evidence": null
+    },
+    "harnessLive": {
+      "status": "NOT_RUN",
+      "evidence": null
+    },
+    "unityEditMode": {
+      "status": "NOT_RUN",
+      "evidence": null
+    },
+    "unityPlayMode": {
+      "status": "NOT_RUN",
+      "evidence": null
+    },
+    "fullE2E": {
+      "status": "NOT_RUN",
+      "evidence": null
+    }
+  },
+  "allowedStatuses": [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "NOT_RUN"
+  ],
+  "policy": {
+    "fixtureIsNotLiveModel": true,
+    "inventoryIsNotUnityExecution": true,
+    "approvalRequiredBeforeApply": true
+  }
+}
