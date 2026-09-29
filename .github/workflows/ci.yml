@@ -20,7 +20,8 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p artifacts/python verification/fragments
-          python -m unittest discover -s Agent/tests -v 2>&1 | tee artifacts/python/agent.log\n          python -m unittest discover -s tools/tests -v 2>&1 | tee artifacts/python/verification-tools.log
+          python -m unittest discover -s Agent/tests -v 2>&1 | tee artifacts/python/agent.log
+          python -m unittest discover -s tools/tests -v 2>&1 | tee artifacts/python/verification-tools.log
       - name: Classify backend gate
         if: always()
         run: |
