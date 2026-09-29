@@ -42,7 +42,7 @@ def main() -> int:
     p=argparse.ArgumentParser()
     p.add_argument("--harness",required=True); p.add_argument("--approval",required=True)
     p.add_argument("--receipt",required=True); p.add_argument("--unity",required=True)
-    p.add_argument("--project",default="."); p.add_argument("--output",default="artifacts/e2e/evidence.json")
+    p.add_argument("--project",default="."); p.add_argument("--output",default="artifacts/e2e/evidence.json")\n    p.add_argument("--gate-output")
     args=p.parse_args(); commit=current_sha(Path(args.project).resolve())
     harness,approval,receipt,unity=map(load,(args.harness,args.approval,args.receipt,args.unity))
     errors=verify(harness,approval,receipt,unity,commit)
