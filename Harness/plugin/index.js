@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 export const name = 'questops-project-tools'
@@ -14,7 +14,7 @@ function projectRoot() {
 async function readProjectFile(relativePath) {
   const root = projectRoot()
   const target = resolve(root, relativePath)
-  if (!target.startsWith(root)) throw new Error('path escaped project root')
+  const rel = relative(root, target)\n  if (rel.startsWith('..') || rel === '..') throw new Error('path escaped project root')
   return readFile(target, 'utf8')
 }
 
