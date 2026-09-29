@@ -1,0 +1,93 @@
+name: rc1-e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: Type APPROVE to bind your GitHub identity to the generated draft
+        required: true
+      unity_path:
+        description: Absolute path to Unity 6000.3.23f1 executable
+        required: true
+        default: 'C:\Program Files\Unity\Hub\Editor\6000.3.23f1\Editor\Unity.exe'
+      model:
+        description: DeepSeek model
+        required: true
+        default: 'deepseek-flash'
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-e2e:
+    runs-on: [self-hosted, questops-unity, unity-6000.3.23f1]
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      QUESTOPS_DEEPSEEK_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Require explicit workflow approval
+        shell: pwsh
+        run: |
+          if ("${{ inputs.approval }}" -ne "APPROVE") { throw "workflow_dispatch approval must be exactly APPROVE" }
+          if (-not $env:DEEPSEEK_API_KEY) { throw "DEEPSEEK_API_KEY repository secret is required" }
+
+      - name: Install real DeepSeek Harness runtime
+        shell: pwsh
+        run: |
+          python -m pip install deepseek-harness-sdk
+          npm install --global pnpm@10
+          python Harness/install_smoke.py --workspace . --evidence artifacts/harness/install.json
+
+      - name: Generate grounded draft with real Harness
+        shell: pwsh
+        run: |
+          python Harness/live_smoke.py --workspace . --model "${{ inputs.model }}" --draft artifacts/harness/draft.json --evidence artifacts/harness/live.json
+
+      - name: Bind human approval to exact draft hash
+        shell: pwsh
+        run: |
+          python tools/approve_draft.py --draft artifacts/harness/draft.json --execution-id "github-${{ github.run_id }}-${{ github.run_attempt }}" --actor "${{ github.actor }}" --confirm "${{ inputs.approval }}" --output artifacts/e2e/approval.json
+
+      - name: Create-only apply
+        shell: pwsh
+        run: |
+          python tools/apply_approved.py --draft artifacts/harness/draft.json --approval artifacts/e2e/approval.json --target artifacts/e2e/applied/quest.json --receipt artifacts/e2e/apply-receipt.json
+
+      - name: Exact Unity version preflight
+        shell: pwsh
+        run: |
+          python tools/unity_preflight.py --unity "${{ inputs.unity_path }}" --project . --output artifacts/unity/preflight.json
+
+      - name: Execute real Unity against the applied artifact
+        shell: pwsh
+        run: |
+          python tools/run_unity_tests.py --unity "${{ inputs.unity_path }}" --project . --mode all --output artifacts/unity --canonical-artifact artifacts/e2e/applied/quest.json
+
+      - name: Verify one commit and one content-hash chain
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force verification/fragments | Out-Null
+          python tools/verify_e2e.py --harness artifacts/harness/live.json --approval artifacts/e2e/approval.json --receipt artifacts/e2e/apply-receipt.json --unity artifacts/unity/verification.json --project . --output artifacts/e2e/evidence.json --gate-output verification/fragments/fullE2E.json
+          python tools/emit_verification.py --gate harnessLive --status PASS --evidence artifacts/harness/live.json --output verification/fragments/harnessLive.json
+          python tools/emit_verification.py --gate unityEditMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityEditMode.json
+          python tools/emit_verification.py --gate unityPlayMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityPlayMode.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: questops-rc1-e2e-evidence
+          path: |
+            artifacts/harness/
+            artifacts/e2e/
+            artifacts/unity/
+            verification/fragments/
