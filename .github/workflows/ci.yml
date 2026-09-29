@@ -123,7 +123,7 @@ jobs:
           echo "ATTEMPTED" > artifacts/harness/live-state.txt
           args=(--workspace . --evidence artifacts/harness/live.json)
           if [ -n "$QUESTOPS_DEEPSEEK_MODEL" ]; then args+=(--model "$QUESTOPS_DEEPSEEK_MODEL"); fi
-          python Harness/live_smoke.py "${args[@]}"
+          python Harness/live_smoke.py "${args[@]}" --draft artifacts/harness/draft.json
       - name: Classify Harness live gate
         if: always()
         run: |
@@ -221,7 +221,9 @@ jobs:
       - name: Merge evidence and evaluate release state
         run: |
           mkdir -p artifacts/verification ci-evidence/verification/fragments
-          python tools/emit_verification.py --gate fullE2E --status NOT_RUN --reason "requires real Harness plus Unity PlayMode outcome evidence" --output ci-evidence/verification/fragments/fullE2E.json
+          if [ ! -f ci-evidence/verification/fragments/fullE2E.json ]; then
+            python tools/emit_verification.py --gate fullE2E --status NOT_RUN --reason "no same-run Harness→approval→apply→Unity E2E evidence was supplied" --output ci-evidence/verification/fragments/fullE2E.json
+          fi
           python tools/merge_verification.py --template verification/release-gates.json --fragments ci-evidence --output artifacts/verification/verification.json
           python tools/release_gate.py artifacts/verification/verification.json || code=$?
           test "${code:-0}" -eq 0 -o "${code:-0}" -eq 2
