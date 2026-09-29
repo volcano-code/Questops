@@ -173,9 +173,12 @@ jobs:
         run: |
           mkdir -p artifacts/unity verification/fragments
           test -f Packages/com.questops.toolkit/Runtime/CanonicalQuestRuntime.cs
+          test -f Packages/com.questops.toolkit/Tests/EditMode/CanonicalQuestEditModeTests.cs
+          test -f Packages/com.questops.toolkit/Tests/EditMode/QuestOps.Tests.EditMode.asmdef
           test -f Packages/com.questops.toolkit/Tests/PlayMode/CanonicalQuestPlayModeTests.cs
           test -f Packages/com.questops.toolkit/Tests/PlayMode/QuestOps.Tests.PlayMode.asmdef
-          printf 'source=SOURCE_PRESENT\nexecution=NOT_RUN\n' > artifacts/unity/source.txt
+          test -f tools/run_unity_tests.py
+          printf 'source=SOURCE_PRESENT\nrunner=SOURCE_PRESENT\nexecution=NOT_RUN\n' > artifacts/unity/source.txt
       - name: Classify Unity execution gates
         if: always()
         run: |
