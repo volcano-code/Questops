@@ -79,33 +79,75 @@ jobs:
   harness-boundary:
     runs-on: ubuntu-latest
     env:
-      QUESTOPS_HARNESS_URL: ${{ secrets.QUESTOPS_HARNESS_URL }}
-      QUESTOPS_HARNESS_TOKEN: ${{ secrets.QUESTOPS_HARNESS_TOKEN }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      QUESTOPS_DEEPSEEK_MODEL: ${{ vars.QUESTOPS_DEEPSEEK_MODEL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run mock adapter contract tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install published DeepSeek Harness SDK and pnpm
+        id: sdk
+        continue-on-error: true
+        run: |
+          python -m pip install deepseek-harness-sdk
+          npm install --global pnpm@10
+          dsh --version
+          pnpm --version
+      - name: Install QuestOps bundle into real Harness profile
+        id: install
+        if: steps.sdk.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/harness verification/fragments
+          python Harness/install_smoke.py --workspace . --evidence artifacts/harness/install.json
+      - name: Run adapter software tests
         id: mock
         continue-on-error: true
         run: |
           mkdir -p artifacts/harness verification/fragments
           python -m unittest discover -s Harness/tests -v 2>&1 | tee artifacts/harness/mock.log
-      - name: Classify live Harness gate without fabricating it
+      - name: Run live model/tool smoke when credential is configured
+        id: live
+        if: steps.sdk.outcome == 'success' && steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "NO_CREDENTIAL" > artifacts/harness/live-state.txt
+            exit 0
+          fi
+          echo "ATTEMPTED" > artifacts/harness/live-state.txt
+          args=(--workspace . --evidence artifacts/harness/live.json)
+          if [ -n "$QUESTOPS_DEEPSEEK_MODEL" ]; then args+=(--model "$QUESTOPS_DEEPSEEK_MODEL"); fi
+          python Harness/live_smoke.py "${args[@]}"
+      - name: Classify Harness live gate
         if: always()
         run: |
-          if [ "${{ steps.mock.outcome }}" != "success" ]; then
-            status=FAIL
-            reason="Harness adapter contract tests failed"
-          elif [ -z "$QUESTOPS_HARNESS_URL" ] || [ -z "$QUESTOPS_HARNESS_TOKEN" ]; then
-            status=BLOCKED
-            reason="real Harness gateway URL/token are not configured"
+          mkdir -p artifacts/harness verification/fragments
+          if [ "${{ steps.sdk.outcome }}" != "success" ]; then
+            status=FAIL; reason="published DeepSeek Harness SDK/runtime could not be installed"
+          elif [ "${{ steps.install.outcome }}" != "success" ]; then
+            status=FAIL; reason="QuestOps bundle could not be installed/composed in a real Harness profile"
+          elif [ "${{ steps.mock.outcome }}" != "success" ]; then
+            status=FAIL; reason="Harness adapter software tests failed"
+          elif [ -f artifacts/harness/live.json ]; then
+            status=PASS; reason=""
+          elif [ -f artifacts/harness/live-state.txt ] && grep -q NO_CREDENTIAL artifacts/harness/live-state.txt; then
+            status=BLOCKED; reason="DEEPSEEK_API_KEY GitHub secret is not configured"
           else
-            status=NOT_RUN
-            reason="credentials exist but a real live smoke command is not wired yet"
+            status=FAIL; reason="real Harness live smoke was attempted but produced no valid evidence"
           fi
-          python tools/emit_verification.py --gate harnessLive --status "$status" --reason "$reason" --evidence artifacts/harness/mock.log --output verification/fragments/harnessLive.json
+          args=(--gate harnessLive --status "$status" --output verification/fragments/harnessLive.json)
+          if [ "$status" = PASS ]; then
+            args+=(--evidence artifacts/harness/live.json)
+          else
+            args+=(--reason "$reason")
+            if [ -f artifacts/harness/install.json ]; then args+=(--evidence artifacts/harness/install.json); fi
+          fi
+          python tools/emit_verification.py "${args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -113,8 +155,8 @@ jobs:
           path: |
             artifacts/harness/
             verification/fragments/harnessLive.json
-      - name: Enforce adapter tests
-        if: steps.mock.outcome != 'success'
+      - name: Enforce Harness software integration
+        if: steps.sdk.outcome != 'success' || steps.install.outcome != 'success' || steps.mock.outcome != 'success'
         run: exit 1
 
   unity-source-boundary:
