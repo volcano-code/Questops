@@ -6,7 +6,8 @@ from pathlib import Path
 
 REQUIRED_TOOLS={"questops_read_project_contract","questops_read_authoring_skill"}
 
-def load(path: str) -> dict: return json.loads(Path(path).read_text(encoding="utf-8"))
+def load(path: str) -> dict:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 def current_sha(project: Path) -> str:
     if os.getenv("GITHUB_SHA"): return os.environ["GITHUB_SHA"]
@@ -33,7 +34,8 @@ def verify(harness: dict, approval: dict, receipt: dict, unity: dict, expected_c
     runs={r.get("platform"):r for r in unity.get("runs") or []}
     for mode in ("EditMode","PlayMode"):
         run=runs.get(mode)
-        if not run: errors.append(f"Unity {mode} evidence is missing"); continue
+        if not run:
+            errors.append(f"Unity {mode} evidence is missing"); continue
         if run.get("processExitCode") != 0 or int(run.get("total") or 0)<=0 or int(run.get("failed") or 0)!=0:
             errors.append(f"Unity {mode} did not pass")
     return errors
@@ -42,7 +44,8 @@ def main() -> int:
     p=argparse.ArgumentParser()
     p.add_argument("--harness",required=True); p.add_argument("--approval",required=True)
     p.add_argument("--receipt",required=True); p.add_argument("--unity",required=True)
-    p.add_argument("--project",default="."); p.add_argument("--output",default="artifacts/e2e/evidence.json")\n    p.add_argument("--gate-output")
+    p.add_argument("--project",default="."); p.add_argument("--output",default="artifacts/e2e/evidence.json")
+    p.add_argument("--gate-output")
     args=p.parse_args(); commit=current_sha(Path(args.project).resolve())
     harness,approval,receipt,unity=map(load,(args.harness,args.approval,args.receipt,args.unity))
     errors=verify(harness,approval,receipt,unity,commit)
@@ -53,6 +56,14 @@ def main() -> int:
     }
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(evidence,indent=2)+"\n",encoding="utf-8")
+    if args.gate_output:
+        gate_path=Path(args.gate_output); gate_path.parent.mkdir(parents=True,exist_ok=True)
+        gate={
+            "gate":"fullE2E","status":"PASS" if not errors else "FAIL",
+            "evidence":str(out) if not errors else None,
+            "reason":None if not errors else "; ".join(errors),
+        }
+        gate_path.write_text(json.dumps(gate,indent=2)+"\n",encoding="utf-8")
     if errors:
         for error in errors: print("FAIL:",error)
         return 1
