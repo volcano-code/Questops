@@ -61,8 +61,8 @@ def main() -> int:
         return fail("dsh executable from deepseek-harness-runtime-bin is unavailable")
 
     try:
-        subprocess.run([dsh,"--profile","sdk","--dump-default-config"],env=env,cwd=workspace,check=True,stdout=subprocess.DEVNULL)
-        subprocess.run([dsh,"plugin","--profile","sdk","add",f"file:{plugin}"],env=env,cwd=workspace,check=True)
+        subprocess.run([dsh,"--profile","sdk-minimal","--dump-default-config"],env=env,cwd=workspace,check=True,stdout=subprocess.DEVNULL)
+        subprocess.run([dsh,"plugin","--profile","sdk-minimal","add",f"file:{plugin}"],env=env,cwd=workspace,check=True)
 
         session_id="questops-live-"+uuid.uuid4().hex[:12]
         prompt=(
@@ -76,7 +76,7 @@ def main() -> int:
             cwd=str(workspace),
             provider=args.provider,
             model=args.model,
-            profile="sdk",
+            profile="sdk-minimal",
             env={"QUESTOPS_PROJECT_ROOT": str(workspace)},
             request_timeout_seconds=120.0,
         ) as harness:
