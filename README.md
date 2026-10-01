@@ -73,6 +73,12 @@ Then open `Assets/QuestOpsDemo/QuestOpsDemo.unity` and enter Play Mode. The scen
 
 See `docs/RUN_REAL_GATES.md` for exact prerequisites.
 
+## Agent benchmark
+
+`evals/cases.jsonl` contains 30 frozen cases: 10 valid paraphrases plus 5 each for missing requirements, unknown resources, unsupported gameplay, and requirement drift. `evals/run_eval.py` runs them through real DeepSeek Harness sessions and automatically scores decision correctness, strict draft validity, required tool use, and least-privilege tool surface.
+
+The benchmark is intentionally credentialed and is available as the manual `agent-eval.yml` workflow. Without a real API key, only the dataset/schema tests run; no benchmark success rate is claimed.
+
 ## Evidence policy
 
 - software unit tests ≠ Agent benchmark success;
