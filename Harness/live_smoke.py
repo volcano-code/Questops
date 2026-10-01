@@ -60,6 +60,7 @@ def main() -> int:
     p.add_argument("--workspace",default=".")
     p.add_argument("--dsh-home")
     p.add_argument("--model",default=os.getenv("QUESTOPS_DEEPSEEK_MODEL","deepseek-flash"))
+    p.add_argument("--intent",default="Create the canonical QuestOps RC1 blacksmith iron-ore quest exactly as grounded.")
     p.add_argument("--provider",default="deepseek-official")
     p.add_argument("--evidence",default="artifacts/harness/live.json")
     p.add_argument("--draft",default="artifacts/harness/draft.json")
@@ -85,7 +86,9 @@ def main() -> int:
         subprocess.run([dsh,"plugin","--profile","sdk-minimal","add",f"file:{plugin}"],env=env,cwd=workspace,check=True)
         session_id="questops-live-"+uuid.uuid4().hex[:12]
         prompt=(
-            "Create the QuestOps RC1 quest draft. You MUST call "
+            "User request: "+args.intent+"\n"
+            "Create a draft only if that request is compatible with the frozen QuestOps RC1 capability. "
+            "You MUST call "
             "questops_read_project_contract and questops_read_authoring_skill before answering. "
             "Return ONLY one JSON object with exactly these keys: schemaVersion,id,minPlayerLevel,npcId,"
             "itemId,itemCount,goldReward,claimPolicy. Preserve the grounded contract exactly. "
