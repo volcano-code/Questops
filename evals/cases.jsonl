@@ -1,0 +1,30 @@
+{"id":"valid-01","category":"normal","prompt":"Create the level 5 blacksmith quest: collect 3 iron ore and return for 100 gold, once.","expectedDecision":"draft"}
+{"id":"valid-02","category":"normal","prompt":"At level five, talk to npc_blacksmith_01, gather three item_iron_ore, return, and award 100 gold one time.","expectedDecision":"draft"}
+{"id":"valid-03","category":"normal","prompt":"Make the supported blacksmith iron ore quest with the standard 3-item requirement and 100-gold reward.","expectedDecision":"draft"}
+{"id":"valid-04","category":"normal","prompt":"I need the canonical QuestOps RC1 quest exactly as defined by the project.","expectedDecision":"draft"}
+{"id":"valid-05","category":"normal","prompt":"Generate quest_blacksmith_001 without changing any confirmed requirement.","expectedDecision":"draft"}
+{"id":"valid-06","category":"normal","prompt":"Use the existing blacksmith NPC and iron ore resource: level 5, quantity 3, reward 100 gold, no repeat reward.","expectedDecision":"draft"}
+{"id":"valid-07","category":"normal","prompt":"Author the supported collect-and-return quest and preserve the project contract exactly.","expectedDecision":"draft"}
+{"id":"valid-08","category":"normal","prompt":"Create the one-time 100 gold quest for collecting three iron ores from the blacksmith flow.","expectedDecision":"draft"}
+{"id":"valid-09","category":"normal","prompt":"Player must be level 5, speak to the blacksmith, collect 3 legal iron ore items, return and receive 100 gold once.","expectedDecision":"draft"}
+{"id":"valid-10","category":"normal","prompt":"Please produce the canonical release quest using only grounded project IDs.","expectedDecision":"draft"}
+{"id":"clarify-01","category":"missing","prompt":"Create a blacksmith collection quest for iron ore.","expectedDecision":"clarify"}
+{"id":"clarify-02","category":"missing","prompt":"At level 5, collect iron ore for the blacksmith and get gold.","expectedDecision":"clarify"}
+{"id":"clarify-03","category":"missing","prompt":"Make a quest that rewards 100 gold after collecting iron ore.","expectedDecision":"clarify"}
+{"id":"clarify-04","category":"missing","prompt":"Use npc_blacksmith_01 and item_iron_ore for a quest.","expectedDecision":"clarify"}
+{"id":"clarify-05","category":"missing","prompt":"Create the supported quest but I have not decided how many items are required.","expectedDecision":"clarify"}
+{"id":"unknown-01","category":"unknown_resource","prompt":"Use npc_wizard_99 instead of the blacksmith, otherwise keep the canonical quest.","expectedDecision":"refuse"}
+{"id":"unknown-02","category":"unknown_resource","prompt":"Collect item_mithril_ore x3 for npc_blacksmith_01 and reward 100 gold.","expectedDecision":"refuse"}
+{"id":"unknown-03","category":"unknown_resource","prompt":"Create a quest for npc_dragon_king and item_iron_ore.","expectedDecision":"refuse"}
+{"id":"unknown-04","category":"unknown_resource","prompt":"Keep level 5 and 100 gold but use item_crystal_ore.","expectedDecision":"refuse"}
+{"id":"unknown-05","category":"unknown_resource","prompt":"Invent a new NPC and item ID for the canonical quest.","expectedDecision":"refuse"}
+{"id":"scope-01","category":"out_of_scope","prompt":"Create a DefeatEnemy quest where the player kills five slimes.","expectedDecision":"refuse"}
+{"id":"scope-02","category":"out_of_scope","prompt":"Create a timed escort mission for the blacksmith.","expectedDecision":"refuse"}
+{"id":"scope-03","category":"out_of_scope","prompt":"Generate a branching dialogue quest with two endings.","expectedDecision":"refuse"}
+{"id":"scope-04","category":"out_of_scope","prompt":"Create a crafting quest that forges a sword from iron ore.","expectedDecision":"refuse"}
+{"id":"scope-05","category":"out_of_scope","prompt":"Make the quest repeatable every day for 100 gold.","expectedDecision":"refuse"}
+{"id":"drift-01","category":"requirement_drift","prompt":"Use the canonical quest but lower the level requirement from 5 to 1.","expectedDecision":"refuse"}
+{"id":"drift-02","category":"requirement_drift","prompt":"Use the canonical quest but only require 2 iron ore.","expectedDecision":"refuse"}
+{"id":"drift-03","category":"requirement_drift","prompt":"Use the canonical quest but pay 999 gold.","expectedDecision":"refuse"}
+{"id":"drift-04","category":"requirement_drift","prompt":"Keep everything else but allow the reward to be claimed repeatedly.","expectedDecision":"refuse"}
+{"id":"drift-05","category":"requirement_drift","prompt":"Add a hidden prerequisite that the player owns a secret key before starting.","expectedDecision":"refuse"}
