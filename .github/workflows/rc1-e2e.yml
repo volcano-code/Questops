@@ -68,6 +68,10 @@ jobs:
         run: |
           python tools/unity_preflight.py --unity "${{ inputs.unity_path }}" --project . --output artifacts/unity/preflight.json
 
+      - name: Generate playable graybox scene
+        shell: pwsh
+        run: |
+          python tools/build_unity_demo.py --unity "${{ inputs.unity_path }}" --project . --output artifacts/unity/demo-build.json
       - name: Execute real Unity against the applied artifact
         shell: pwsh
         run: |
