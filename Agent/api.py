@@ -65,3 +65,9 @@ def create_run(req: RunRequest):
         if live.get("liveModel") is not True:
             raise HTTPException(502,"Harness evidence did not prove a live model call")
         return RunResponse(runId=run_id,mode="live",liveModel=True,draft=draft,evidence=live)
+
+# Mount the built workbench last so /api routes retain priority.
+WEB_DIST=ROOT/"Web"/"dist"
+if WEB_DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/",StaticFiles(directory=str(WEB_DIST),html=True),name="workbench")
