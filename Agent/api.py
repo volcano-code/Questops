@@ -56,7 +56,7 @@ def create_run(req: RunRequest):
         evidence=Path(td)/"live.json"; draft_path=Path(td)/"draft.json"
         completed=subprocess.run([
             sys.executable,str(ROOT/"Harness"/"live_smoke.py"),"--workspace",str(ROOT),
-            "--evidence",str(evidence),"--draft",str(draft_path),
+            "--evidence",str(evidence),"--draft",str(draft_path),"--intent",req.intent,
         ],cwd=ROOT,capture_output=True,text=True,check=False,timeout=180)
         if completed.returncode != 0 or not evidence.is_file() or not draft_path.is_file():
             raise HTTPException(502,"real Harness run failed; inspect server logs")
