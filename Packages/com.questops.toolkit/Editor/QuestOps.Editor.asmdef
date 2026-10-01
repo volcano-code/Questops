@@ -1,0 +1,6 @@
+{
+  "name": "QuestOps.Editor",
+  "references": ["QuestOps.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

@@ -1,0 +1,60 @@
+name: unity-live
+
+on:
+  workflow_dispatch:
+    inputs:
+      unity_path:
+        description: Absolute path to Unity 6000.3.23f1 executable on the self-hosted runner
+        required: true
+        default: 'C:\Program Files\Unity\Hub\Editor\6000.3.23f1\Editor\Unity.exe'
+      canonical_artifact:
+        description: Optional project-relative applied quest JSON; defaults to frozen source contract
+        required: false
+        default: 'Schemas/canonical-quest.json'
+
+permissions:
+  contents: read
+
+jobs:
+  unity-live:
+    runs-on: [self-hosted, questops-unity, unity-6000.3.23f1]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact Unity version preflight
+        id: preflight
+        shell: pwsh
+        run: |
+          python tools/unity_preflight.py --unity "${{ inputs.unity_path }}" --project . --output artifacts/unity/preflight.json
+      - name: Generate playable graybox scene
+        shell: pwsh
+        run: |
+          python tools/build_unity_demo.py --unity "${{ inputs.unity_path }}" --project . --output artifacts/unity/demo-build.json
+      - name: Execute real EditMode and PlayMode tests
+        id: tests
+        shell: pwsh
+        run: |
+          python tools/run_unity_tests.py --unity "${{ inputs.unity_path }}" --project . --mode all --output artifacts/unity --canonical-artifact "${{ inputs.canonical_artifact }}"
+      - name: Emit real Unity gate fragments
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force verification/fragments | Out-Null
+          if ("${{ steps.preflight.outcome }}" -eq "success" -and "${{ steps.tests.outcome }}" -eq "success") {
+            python tools/emit_verification.py --gate unityEditMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityEditMode.json
+            python tools/emit_verification.py --gate unityPlayMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityPlayMode.json
+          } else {
+            python tools/emit_verification.py --gate unityEditMode --status FAIL --reason "real Unity Editor preflight or tests failed" --output verification/fragments/unityEditMode.json
+            python tools/emit_verification.py --gate unityPlayMode --status FAIL --reason "real Unity Editor preflight or tests failed" --output verification/fragments/unityPlayMode.json
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unity-live-evidence
+          path: |
+            artifacts/unity/
+            verification/fragments/unity*.json

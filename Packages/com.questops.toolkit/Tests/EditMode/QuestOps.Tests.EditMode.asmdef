@@ -1,0 +1,7 @@
+{
+  "name": "QuestOps.Tests.EditMode",
+  "references": ["QuestOps.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}

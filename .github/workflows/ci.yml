@@ -1,0 +1,240 @@
+name: ci
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Agent test dependencies
+        run: python -m pip install -r Agent/requirements.txt
+      - name: Run deterministic Python tests
+        id: tests
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/python verification/fragments
+          python -m unittest discover -s Agent/tests -v 2>&1 | tee artifacts/python/agent.log
+          python -m unittest discover -s tools/tests -v 2>&1 | tee artifacts/python/verification-tools.log
+      - name: Classify backend gate
+        if: always()
+        run: |
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then status=PASS; else status=FAIL; fi
+          args=(--gate backend --status "$status" --evidence artifacts/python/agent.log --output verification/fragments/backend.json)
+          if [ "$status" = FAIL ]; then args+=(--reason "Agent Python tests failed"); fi
+          python tools/emit_verification.py "${args[@]}"
+      - name: Validate release template
+        run: |
+          python tools/release_gate.py verification/release-gates.json || code=$?
+          test "${code:-0}" -eq 0 -o "${code:-0}" -eq 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-evidence
+          path: |
+            artifacts/python/
+            verification/fragments/backend.json
+      - name: Enforce Python tests
+        if: steps.tests.outcome != 'success'
+        run: exit 1
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install, test and build
+        id: checks
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/web verification/fragments
+          (cd Web && npm install) 2>&1 | tee artifacts/web/install.log
+          (cd Web && npm test) 2>&1 | tee artifacts/web/test.log
+          (cd Web && npm run build) 2>&1 | tee artifacts/web/build.log
+      - name: Classify web gate
+        if: always()
+        run: |
+          if [ "${{ steps.checks.outcome }}" = "success" ]; then status=PASS; else status=FAIL; fi
+          args=(--gate web --status "$status" --evidence artifacts/web/test.log --output verification/fragments/web.json)
+          if [ "$status" = FAIL ]; then args+=(--reason "Web install/test/build failed"); fi
+          python tools/emit_verification.py "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-evidence
+          path: |
+            artifacts/web/
+            verification/fragments/web.json
+      - name: Enforce Web checks
+        if: steps.checks.outcome != 'success'
+        run: exit 1
+
+  harness-boundary:
+    runs-on: ubuntu-latest
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      QUESTOPS_DEEPSEEK_MODEL: ${{ vars.QUESTOPS_DEEPSEEK_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install published DeepSeek Harness SDK and pnpm
+        id: sdk
+        continue-on-error: true
+        run: |
+          python -m pip install deepseek-harness-sdk
+          npm install --global pnpm@10
+          python -c "import deepseek_harness; print('deepseek_harness import: OK')"
+          command -v dsh
+          pnpm --version
+      - name: Install QuestOps bundle into real Harness profile
+        id: install
+        if: steps.sdk.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/harness verification/fragments
+          python Harness/install_smoke.py --workspace . --evidence artifacts/harness/install.json
+      - name: Run adapter software tests
+        id: mock
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/harness verification/fragments
+          python -m unittest discover -s Harness/tests -v 2>&1 | tee artifacts/harness/mock.log
+      - name: Run live model/tool smoke when credential is configured
+        id: live
+        if: steps.sdk.outcome == 'success' && steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "NO_CREDENTIAL" > artifacts/harness/live-state.txt
+            exit 0
+          fi
+          echo "ATTEMPTED" > artifacts/harness/live-state.txt
+          args=(--workspace . --evidence artifacts/harness/live.json)
+          if [ -n "$QUESTOPS_DEEPSEEK_MODEL" ]; then args+=(--model "$QUESTOPS_DEEPSEEK_MODEL"); fi
+          python Harness/live_smoke.py "${args[@]}" --draft artifacts/harness/draft.json
+      - name: Classify Harness live gate
+        if: always()
+        run: |
+          mkdir -p artifacts/harness verification/fragments
+          if [ "${{ steps.sdk.outcome }}" != "success" ]; then
+            status=FAIL; reason="published DeepSeek Harness SDK/runtime could not be installed"
+          elif [ "${{ steps.install.outcome }}" != "success" ]; then
+            status=FAIL; reason="QuestOps bundle could not be installed/composed in a real Harness profile"
+          elif [ "${{ steps.mock.outcome }}" != "success" ]; then
+            status=FAIL; reason="Harness adapter software tests failed"
+          elif [ -f artifacts/harness/live.json ]; then
+            status=PASS; reason=""
+          elif [ -f artifacts/harness/live-state.txt ] && grep -q NO_CREDENTIAL artifacts/harness/live-state.txt; then
+            status=BLOCKED; reason="DEEPSEEK_API_KEY GitHub secret is not configured"
+          else
+            status=FAIL; reason="real Harness live smoke was attempted but produced no valid evidence"
+          fi
+          args=(--gate harnessLive --status "$status" --output verification/fragments/harnessLive.json)
+          if [ "$status" = PASS ]; then
+            args+=(--evidence artifacts/harness/live.json)
+          else
+            args+=(--reason "$reason")
+            if [ -f artifacts/harness/install.json ]; then args+=(--evidence artifacts/harness/install.json); fi
+          fi
+          python tools/emit_verification.py "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-evidence
+          path: |
+            artifacts/harness/
+            verification/fragments/harnessLive.json
+      - name: Enforce Harness software integration
+        if: steps.sdk.outcome != 'success' || steps.install.outcome != 'success' || steps.mock.outcome != 'success'
+        run: exit 1
+
+  unity-source-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Inspect Unity source only
+        id: source
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/unity verification/fragments
+          test -f Packages/com.questops.toolkit/Runtime/CanonicalQuestRuntime.cs
+          test -f Packages/com.questops.toolkit/Tests/EditMode/CanonicalQuestEditModeTests.cs
+          test -f Packages/com.questops.toolkit/Tests/EditMode/QuestOps.Tests.EditMode.asmdef
+          test -f Packages/com.questops.toolkit/Tests/PlayMode/CanonicalQuestPlayModeTests.cs
+          test -f Packages/com.questops.toolkit/Tests/PlayMode/QuestOps.Tests.PlayMode.asmdef
+          test -f tools/run_unity_tests.py
+          test -f tools/build_unity_demo.py
+          test -f Packages/com.questops.toolkit/Runtime/QuestOpsGrayboxDemo.cs
+          test -f Packages/com.questops.toolkit/Editor/QuestOpsDemoSceneBuilder.cs
+          printf 'source=SOURCE_PRESENT\nrunner=SOURCE_PRESENT\nexecution=NOT_RUN\n' > artifacts/unity/source.txt
+      - name: Classify Unity execution gates
+        if: always()
+        run: |
+          if [ "${{ steps.source.outcome }}" = "success" ]; then
+            status=NOT_RUN
+            reason="Unity test source exists; no Unity Editor runner executed it"
+          else
+            status=FAIL
+            reason="required Unity runtime/test source is missing"
+            printf 'source=SOURCE_MISSING\nexecution=NOT_RUN\n' > artifacts/unity/source.txt
+          fi
+          for gate in unityEditMode unityPlayMode; do
+            python tools/emit_verification.py --gate "$gate" --status "$status" --reason "$reason" --evidence artifacts/unity/source.txt --output "verification/fragments/$gate.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unity-source-evidence
+          path: |
+            artifacts/unity/
+            verification/fragments/unity*.json
+      - name: Enforce source boundary
+        if: steps.source.outcome != 'success'
+        run: exit 1
+
+  verification:
+    if: always()
+    needs: [python, web, harness-boundary, unity-source-boundary]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-evidence"
+          path: ci-evidence
+          merge-multiple: true
+      - name: Merge evidence and evaluate release state
+        run: |
+          mkdir -p artifacts/verification ci-evidence/verification/fragments
+          if [ ! -f ci-evidence/verification/fragments/fullE2E.json ]; then
+            python tools/emit_verification.py --gate fullE2E --status NOT_RUN --reason "no same-run Harness→approval→apply→Unity E2E evidence was supplied" --output ci-evidence/verification/fragments/fullE2E.json
+          fi
+          python tools/merge_verification.py --template verification/release-gates.json --fragments ci-evidence --output artifacts/verification/verification.json
+          python tools/release_gate.py artifacts/verification/verification.json || code=$?
+          test "${code:-0}" -eq 0 -o "${code:-0}" -eq 2
+          cat artifacts/verification/verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: questops-verification
+          path: artifacts/verification/verification.json

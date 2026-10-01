@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0">
+  <test-suite type="Assembly" name="QuestOps.Tests.PlayMode" result="Passed" />
+</test-run>
