@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
-from Harness.live_smoke import parse_draft
+from Harness.live_smoke import parse_draft, visible_request_tools
 
 class LiveSmokeBoundaryTests(unittest.TestCase):
     def canonical(self):
@@ -24,6 +24,20 @@ class LiveSmokeBoundaryTests(unittest.TestCase):
         self.assertEqual(self.canonical(),parse_draft(fence+"json\n"+raw+"\n"+fence))
         with self.assertRaises((ValueError,json.JSONDecodeError)):
             parse_draft("Here is the draft: "+raw)
+
+    def test_request_header_tool_surface_is_extractable(self):
+        events=[{"type":"request/header","data":{"tools":[
+            {"name":"questops_read_project_contract"},
+            {"function":{"name":"questops_read_authoring_skill"}},
+        ]}}]
+        self.assertEqual(
+            {"questops_read_project_contract","questops_read_authoring_skill"},
+            visible_request_tools(events),
+        )
+
+    def test_request_header_detects_dangerous_extra_tool(self):
+        events=[{"type":"request/header","data":{"tools":[{"name":"bash"}]}}]
+        self.assertEqual({"bash"},visible_request_tools(events))
 
     def test_requirement_drift_from_model_is_rejected(self):
         draft=self.canonical(); draft["goldReward"]=999
