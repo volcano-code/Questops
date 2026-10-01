@@ -1,23 +1,16 @@
 # QuestOps DeepSeek Harness plugin
 
-This is the real Cordis/Harness plugin source for project grounding.
+This is the installable Cordis/Harness bundle used by RC1.
 
-It registers two model-callable read-only tools:
+It registers two read-only model-callable tools:
 
 - `questops_read_project_contract`
 - `questops_read_authoring_skill`
 
-The plugin deliberately has **no apply/approval/write tool**. Approval and create-only apply stay outside model authority.
+The plugin also installs an agent-scoped `tools.restrict({ allow: ... })` mask so inherited tools from `sdk-minimal` — notably its danger-full-access persistent shell — are not part of the RC1 model tool surface. DeepSeek Harness documents `tools.restrict` as the scope-aligned mechanism for filtering inherited global tools.
 
-## Development smoke
+There is deliberately no approval, write, shell, or apply capability in the RC1 model surface. Human approval and create-only apply remain host-side operations.
 
-Use a DeepSeek Harness checkout with dependencies installed. Copy
-`cordis.patch.example.yml`, replace all paths with absolute paths, then load the
-overlay with the Harness development command.
+`Harness/install_smoke.py` proves the bundle can be installed and composed. `Harness/live_smoke.py` additionally inspects real `request/header` events and fails unless the visible model tool set is exactly the two read-only QuestOps tools.
 
-A source file or successful TypeScript parse is not enough to set
-`harnessLive=PASS`. Promotion requires evidence from a real Harness session
-showing the plugin loaded and the model actually called the QuestOps tools.
-
-The plugin API follows the Harness Cordis tool pattern: `apply(ctx)`,
-`inject=['tools']`, and `defineTool(...)`.
+A source file, plugin-install success, or mock test can never set `harnessLive=PASS`; a real credentialed model session is required.
