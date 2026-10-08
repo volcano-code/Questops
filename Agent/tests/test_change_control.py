@@ -44,4 +44,29 @@ class ChangeControlTests(unittest.TestCase):
             with self.assertRaises(ChangeControlError):
                 reconcile(target,approval)
 
+
+    def test_create_only_rejects_dangling_symlink_without_writing_outside(self):
+        draft=self.draft(); approval=Approval.for_draft("run-1",draft)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); outside=root/"outside.json"; link=root/"quest.json"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlink creation unavailable")
+            with self.assertRaises(ChangeControlError):
+                apply_create_only(link,draft,approval)
+            self.assertFalse(outside.exists())
+
+    def test_reconcile_rejects_symlink_even_when_content_matches(self):
+        draft=self.draft(); approval=Approval.for_draft("run-1",draft)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); real=root/"real.json"; link=root/"quest.json"
+            apply_create_only(real,draft,approval)
+            try:
+                link.symlink_to(real)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlink creation unavailable")
+            with self.assertRaises(ChangeControlError):
+                reconcile(link,approval)
+
 if __name__=="__main__": unittest.main()
