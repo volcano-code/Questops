@@ -1,7 +1,7 @@
 """Review-gated, create-only quest application with deterministic reconciliation."""
 from __future__ import annotations
 from dataclasses import dataclass
-import hashlib, json, os
+import hashlib, json, os, stat
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,8 @@ def apply_create_only(target: Path, draft: dict[str, Any], approval: Approval) -
     digest=sha256_bytes(payload)
     if digest != approval.draft_sha256:
         raise ChangeControlError("draft changed after approval")
-    target=target.resolve()
+    # Resolve the parent only: resolving the leaf follows dangling symlinks.
+    target=Path(target.parent.resolve()) / target.name
     target.parent.mkdir(parents=True,exist_ok=True)
     try:
         fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
@@ -52,10 +53,24 @@ def apply_create_only(target: Path, draft: dict[str, Any], approval: Approval) -
     return ApplyReceipt(approval.run_id,digest,digest,str(target),False)
 
 def reconcile(target: Path, approval: Approval) -> ApplyReceipt:
-    target=target.resolve()
-    if not target.is_file():
-        raise ChangeControlError("approved target does not exist")
-    applied=sha256_bytes(target.read_bytes())
+    # Never follow a symlink while reconciling an approved artifact.
+    target=Path(target.parent.resolve()) / target.name
+    flags=os.O_RDONLY
+    if hasattr(os,"O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd=os.open(target,flags)
+    except OSError as exc:
+        raise ChangeControlError("approved target cannot be opened safely") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ChangeControlError("approved target is not a regular file")
+        with os.fdopen(fd,"rb") as handle:
+            fd=-1
+            applied=sha256_bytes(handle.read())
+    finally:
+        if fd >= 0:
+            os.close(fd)
     if applied != approval.draft_sha256:
         raise ChangeControlError("existing target does not match approved draft")
     return ApplyReceipt(approval.run_id,approval.draft_sha256,applied,str(target),True)
