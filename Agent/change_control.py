@@ -55,6 +55,8 @@ def apply_create_only(target: Path, draft: dict[str, Any], approval: Approval) -
 def reconcile(target: Path, approval: Approval) -> ApplyReceipt:
     # Never follow a symlink while reconciling an approved artifact.
     target=Path(target.parent.resolve()) / target.name
+    if target.is_symlink():
+        raise ChangeControlError("approved target must not be a symlink")
     flags=os.O_RDONLY
     if hasattr(os,"O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
