@@ -21,6 +21,7 @@ jobs:
         id: tests
         continue-on-error: true
         run: |
+          set -euo pipefail
           mkdir -p artifacts/python verification/fragments
           python -m unittest discover -s Agent/tests -v 2>&1 | tee artifacts/python/agent.log
           python -m unittest discover -s tools/tests -v 2>&1 | tee artifacts/python/verification-tools.log
@@ -57,6 +58,7 @@ jobs:
         id: checks
         continue-on-error: true
         run: |
+          set -euo pipefail
           mkdir -p artifacts/web verification/fragments
           (cd Web && npm install) 2>&1 | tee artifacts/web/install.log
           (cd Web && npm test) 2>&1 | tee artifacts/web/test.log
@@ -112,6 +114,7 @@ jobs:
         id: mock
         continue-on-error: true
         run: |
+          set -euo pipefail
           mkdir -p artifacts/harness verification/fragments
           python -m unittest discover -s Harness/tests -v 2>&1 | tee artifacts/harness/mock.log
       - name: Run live model/tool smoke when credential is configured
