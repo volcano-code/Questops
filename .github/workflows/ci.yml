@@ -140,7 +140,7 @@ jobs:
             status=FAIL; reason="QuestOps bundle could not be installed/composed in a real Harness profile"
           elif [ "${{ steps.mock.outcome }}" != "success" ]; then
             status=FAIL; reason="Harness adapter software tests failed"
-          elif [ -f artifacts/harness/live.json ]; then
+          elif [ "${{ steps.live.outcome }}" = "success" ] && [ -s artifacts/harness/live.json ]; then
             status=PASS; reason=""
           elif [ -f artifacts/harness/live-state.txt ] && grep -q NO_CREDENTIAL artifacts/harness/live-state.txt; then
             status=BLOCKED; reason="DEEPSEEK_API_KEY GitHub secret is not configured"
