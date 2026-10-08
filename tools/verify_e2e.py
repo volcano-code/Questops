@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Promote fullE2E only when live Harness, approval/apply and Unity evidence form one hash chain."""
 from __future__ import annotations
-import argparse, json, os, subprocess
+import argparse, hashlib, json, os, subprocess
 from pathlib import Path
 
 REQUIRED_TOOLS={"questops_read_project_contract","questops_read_authoring_skill"}
@@ -40,15 +40,29 @@ def verify(harness: dict, approval: dict, receipt: dict, unity: dict, expected_c
             errors.append(f"Unity {mode} did not pass")
     return errors
 
+def verify_applied_file(receipt: dict, applied_path: Path) -> list[str]:
+    """Independently verify on-disk bytes, not only self-reported receipt hashes."""
+    if applied_path.is_symlink() or not applied_path.is_file():
+        return ["applied artifact is missing or is a symlink"]
+    if Path(str(receipt.get("path") or "")).resolve() != applied_path.resolve():
+        return ["receipt path does not match applied artifact"]
+    digest = hashlib.sha256(applied_path.read_bytes()).hexdigest()
+    if digest != receipt.get("applied_sha256"):
+        return ["applied artifact bytes do not match receipt hash"]
+    return []
+
+
 def main() -> int:
     p=argparse.ArgumentParser()
     p.add_argument("--harness",required=True); p.add_argument("--approval",required=True)
     p.add_argument("--receipt",required=True); p.add_argument("--unity",required=True)
     p.add_argument("--project",default="."); p.add_argument("--output",default="artifacts/e2e/evidence.json")
+    p.add_argument("--applied-artifact",required=True,help="actual file consumed by Unity; required for on-disk hash verification")
     p.add_argument("--gate-output")
     args=p.parse_args(); commit=current_sha(Path(args.project).resolve())
     harness,approval,receipt,unity=map(load,(args.harness,args.approval,args.receipt,args.unity))
     errors=verify(harness,approval,receipt,unity,commit)
+    errors.extend(verify_applied_file(receipt,Path(args.applied_artifact)))
     evidence={
         "schemaVersion":1,"status":"PASS" if not errors else "FAIL","commitSha":commit,
         "executionId":approval.get("executionId"),"draftSha256":harness.get("draftSha256"),
