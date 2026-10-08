@@ -81,7 +81,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force verification/fragments | Out-Null
-          python tools/verify_e2e.py --harness artifacts/harness/live.json --approval artifacts/e2e/approval.json --receipt artifacts/e2e/apply-receipt.json --unity artifacts/unity/verification.json --project . --output artifacts/e2e/evidence.json --gate-output verification/fragments/fullE2E.json
+          python tools/verify_e2e.py --harness artifacts/harness/live.json --approval artifacts/e2e/approval.json --receipt artifacts/e2e/apply-receipt.json --applied-artifact artifacts/e2e/applied/quest.json --unity artifacts/unity/verification.json --project . --output artifacts/e2e/evidence.json --gate-output verification/fragments/fullE2E.json
           python tools/emit_verification.py --gate harnessLive --status PASS --evidence artifacts/harness/live.json --output verification/fragments/harnessLive.json
           python tools/emit_verification.py --gate unityEditMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityEditMode.json
           python tools/emit_verification.py --gate unityPlayMode --status PASS --evidence artifacts/unity/verification.json --output verification/fragments/unityPlayMode.json
