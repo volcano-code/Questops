@@ -1,8 +1,8 @@
-import sys, unittest
+import sys, unittest, tempfile, hashlib
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"tools"))
-from verify_e2e import verify
+from verify_e2e import verify, verify_applied_file
 
 class E2EEvidenceTests(unittest.TestCase):
     def evidence(self):
@@ -33,5 +33,24 @@ class E2EEvidenceTests(unittest.TestCase):
             {"platform":"PlayMode","processExitCode":0,"total":0,"failed":0},
         ])
         self.assertIn("Unity PlayMode did not pass",verify(*args))
+
+
+    def test_applied_file_bytes_are_independently_verified(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"quest.json"
+            path.write_bytes(b"approved bytes")
+            digest=hashlib.sha256(path.read_bytes()).hexdigest()
+            receipt={"path":str(path),"applied_sha256":digest}
+            self.assertEqual([],verify_applied_file(receipt,path))
+            path.write_bytes(b"tampered bytes")
+            self.assertIn("applied artifact bytes do not match receipt hash",verify_applied_file(receipt,path))
+
+    def test_receipt_cannot_point_to_another_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"quest.json"
+            path.write_bytes(b"approved bytes")
+            digest=hashlib.sha256(path.read_bytes()).hexdigest()
+            receipt={"path":str(Path(td)/"other.json"),"applied_sha256":digest}
+            self.assertIn("receipt path does not match applied artifact",verify_applied_file(receipt,path))
 
 if __name__=="__main__": unittest.main()
