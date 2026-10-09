@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed QuestOps release-gate checker."""
 from __future__ import annotations
-import json, sys
+import argparse, json, sys
 from pathlib import Path
 
 ALLOWED={"PASS","FAIL","BLOCKED","NOT_RUN"}
@@ -29,8 +29,12 @@ def validate(manifest: dict) -> list[str]:
     return errors
 
 def main() -> int:
-    path=Path(sys.argv[1] if len(sys.argv)>1 else "verification/release-gates.json")
-    manifest=load_manifest(path)
+    parser=argparse.ArgumentParser(description="QuestOps release gate checker")
+    parser.add_argument("manifest",nargs="?",default="verification/release-gates.json")
+    parser.add_argument("--require-complete",action="store_true",
+                        help="Fail release if any gate is BLOCKED or NOT_RUN")
+    args=parser.parse_args()
+    manifest=load_manifest(Path(args.manifest))
     errors=validate(manifest)
     if errors:
         for error in errors: print("FAIL:",error)
@@ -41,5 +45,6 @@ def main() -> int:
         print("OVERALL: PASS"); return 0
     if any(v=="FAIL" for v in statuses.values()):
         print("OVERALL: FAIL"); return 1
-    print("OVERALL: INCOMPLETE"); return 2
+    print("OVERALL: INCOMPLETE")
+    return 1 if args.require_complete else 2
 if __name__=="__main__": raise SystemExit(main())
