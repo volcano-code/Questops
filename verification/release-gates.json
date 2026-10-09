@@ -3,40 +3,17 @@
   "project": "QuestOps",
   "canonicalCase": "level5-blacksmith-iron3-gold100-exactly-once",
   "gates": {
-    "backend": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "web": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "harnessLive": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "unityEditMode": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "unityPlayMode": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "fullE2E": {
-      "status": "NOT_RUN",
-      "evidence": null
-    }
+    "backend": {"status":"NOT_RUN","evidence":null,"reason":"CI evidence has not been merged into this template"},
+    "web": {"status":"NOT_RUN","evidence":null,"reason":"CI evidence has not been merged into this template"},
+    "harnessLive": {"status":"NOT_RUN","evidence":null,"reason":"real DeepSeek Harness session has not been executed"},
+    "unityEditMode": {"status":"NOT_RUN","evidence":null,"reason":"Unity Editor has not executed EditMode tests"},
+    "unityPlayMode": {"status":"NOT_RUN","evidence":null,"reason":"Unity Editor has not executed PlayMode tests"},
+    "fullE2E": {"status":"NOT_RUN","evidence":null,"reason":"requires live Harness and Unity outcome evidence"}
   },
-  "allowedStatuses": [
-    "PASS",
-    "FAIL",
-    "BLOCKED",
-    "NOT_RUN"
-  ],
-  "policy": {
-    "fixtureIsNotLiveModel": true,
-    "inventoryIsNotUnityExecution": true,
-    "approvalRequiredBeforeApply": true
+  "allowedStatuses":["PASS","FAIL","BLOCKED","NOT_RUN"],
+  "policy":{
+    "fixtureIsNotLiveModel":true,
+    "inventoryIsNotUnityExecution":true,
+    "approvalRequiredBeforeApply":true
   }
 }
